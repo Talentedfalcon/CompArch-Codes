@@ -1,0 +1,16 @@
+Redefine how ExecutionUnit works
+Make all the units independent
+    - Instruction Fetch
+    - Instruction Decode
+    - Execution
+    - Memory
+    - Write Back
+
+Make an instruction Queue
+
+The units should have a way of determining if they are free or not 
+(if not free and then continue executing all that can continue and when space is available switch out)
+
+Have a clock that progresses one click at a time (basically define a step function so that one step is one clock)
+
+Ignore DATA HAZARDS for now and focus on STRUCTURAL HAZARDS

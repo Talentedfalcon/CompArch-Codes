@@ -1,0 +1,15 @@
+Completed:
+    Memory System setup
+    L1 to L2 access
+    L2 to L1 replacement
+    L2 to Maim access
+    Main to L2 to L1 replacement
+    adding auxillary mems to the run_memory_access() pipeline:
+        - Write Buffer [if dirty bit then only the write buffer stores block and not the victim cache]
+        - Victim Cache
+        - ISB
+        - DSB
+
+Remaining:
+    Stats (clean up the representations)
+    Reset: Make all cache block invalid after end of access sequence 
