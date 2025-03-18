@@ -1,4 +1,4 @@
-import numpy as np
+from time import sleep
 
 '''
 Functional Units:
@@ -12,61 +12,6 @@ Functional Units:
     - No Operation (NOP) 1CC
 '''
 
-class ExecutionUnit():
-    def __init__(self,registers,bits):
-        self.bits=bits
-        self.registers=registers
-        pass
-
-    def IADD(self,Rsrc1,Rsrc2):
-        return (Rsrc1['data']+Rsrc2['data'],6)
-    
-    def IMUL(self,Rsrc1,Rsrc2):
-        return (Rsrc1['data']*Rsrc2['data'],12)
-    
-    def FADD(self,Rsrc1,Rsrc2):
-        return (Rsrc1['data']+Rsrc2['data'],18)
-
-    def FMUL(self,Rsrc1,Rsrc2):
-        return (Rsrc1['data']*Rsrc2['data'],30)
-    
-    def LD(self,Mem):
-        return (np.random.randint(0,(2**self.bits)),1)
-    
-    def ST(self,Rsrc):
-        Rsrc['free']=True
-        Rsrc['data']=0
-        return (None,1)
-    
-    def AND(self,Rsrc1,Rsrc2):
-        return (Rsrc1&Rsrc2,1)
-
-    def OR(self,Rsrc1,Rsrc2):
-        return (Rsrc1|Rsrc2,1)
-     
-    def XOR(self,Rsrc1,Rsrc2):
-        return (Rsrc1^Rsrc2,1)
-
-    def NOP(self):
-        return (None,1)
-
-class InstructionFetchUnit():
-    def __init__(self):
-        pass
-
-    def fetch(self,instructions,pc):
-        return instructions[pc]
-    
-class InstructionDecodeUnit():
-    def __init__(self):
-        pass
-
-    def decode(self,instruction):
-        for i in range(len(instruction[1])):
-            if(instruction[1][i].startswith('R')):
-                instruction[1][i]=int(instruction[1][i][1:])
-        return instruction
-
 class VLIWProcessor():
     def __init__(self,bits,num_registers):
         self.bits=bits
@@ -75,14 +20,10 @@ class VLIWProcessor():
         #Initializing the registers
         for i in range(num_registers):
             self.registers.append({
-                'free':True,
-                'data':0,
+                'Free':1,
+                'Data':0,
             })
         self.instructions=[]
-        self.IF=InstructionFetchUnit()
-        self.ID=InstructionDecodeUnit()
-        self.EX=ExecutionUnit(self.registers,bits)
-
     
     def get_instructions(self,filename):
         try:
@@ -102,39 +43,100 @@ class VLIWProcessor():
 
     def run_instructions(self,filename):
         self.get_instructions(filename)
-        # self.show_registers()
 
-        self.pc=0
-        self.clock_cycles=0
 
+        instruction_status=[]
+        for _ in range(len(self.instructions)):
+            instruction_status.append({'Current FU':None,'Executed':0})
+
+        FU_status={
+            'IF':{},
+            'ID':{},
+            'IADD':{},
+            'IMUL':{},
+            'FADD':{},
+            'FMUL':{},
+            'LD':{},
+            'ST':{},
+            'LU':{},
+            'MEM':{},
+            'WB':{},
+        }
+
+        for FU in FU_status:
+            FU_status[FU]={'Free':1,'InstrNum':-1,'ClkRemaining':0,'Completed':0}
+
+        pc=-1
+        clock_cycles=0
         done=False
 
-        while not done:
-            instruction=self.IF.fetch(self.instructions,self.pc)
-            # print(instruction)
-            decoded=self.ID.decode(instruction)
-            # print(decoded)
-            self.EX.execute(decoded)
-            
-            break
+        instructions_completed=0
 
-        # while(self.pc<len(self.instructions)):
-        #     #Instruction Fetch
-        #     instruction=self.instructions[self.pc]
-        #     print(instruction)
-        #     #Instruction Decode
+        while instructions_completed<len(self.instructions):
+            print('Cycle: ',clock_cycles)
+            # if(FU_status['ID']['Completed']):
+            #     if(FU_status['IADD']['Free']):
 
-        #     #Execute
 
-        #     #Memory
 
-        #     #Write Back
-        #     self.pc+=1
+            #Decode
+            if(FU_status['IF']['Completed']):
+                if(FU_status['ID']['Free']):
+                    FU_status['IF']['Free']=1
+                    FU_status['ID']['InstrNum']=FU_status['IF']['InstrNum']
+                    FU_status['ID']['Free']=0
+                    FU_status['ID']['ClkRemaining']=1
+                    FU_status['ID']['Completed']=0
+                    instruction_status[FU_status['ID']['InstrNum']]['Current FU']='ID'
 
+            #Instruction Fetch
+            if(FU_status['IF']['Free']):
+                pc+=1
+                if(pc<len(self.instructions)):
+                    FU_status['IF']['InstrNum']=pc
+                    FU_status['IF']['Free']=0
+                    FU_status['IF']['ClkRemaining']=1
+                    FU_status['IF']['Completed']=0
+                    instruction_status[FU_status['IF']['InstrNum']]['Current FU']='IF'
+
+            for i in instruction_status:
+                print(i)
+            print("\n")
+            for FU in FU_status.values():
+                print(FU)
+
+            for FU in FU_status.values():
+                FU['ClkRemaining']=max(0,FU['ClkRemaining']-1)
+                if(FU['ClkRemaining']==0):
+                    FU['Completed']=1
+
+            for instr in instruction_status:
+                if(instr['Current FU']=="ID"):
+                    if(FU_status[instr['Current FU']]['Completed']):
+                        FU_status[instr['Current FU']]['Free']=1
+                        instr['Executed']=1
+                        instr['Current FU']=None
+                        instructions_completed+=1
+                # else:
+                #     if(instr['Current FU']!=None and FU_status[instr['Current FU']]['Completed']):
+                #         next_FU=list(FU_status.keys())[list(FU_status.keys()).index(instr['Current FU'])+1]
+                #         if(FU_status[next_FU]['Free']):
+                #             FU_status[instr['Current FU']]['Free']=1
+
+
+            print('\n\n\n')
+            clock_cycles+=1
+            sleep(0.4)
+        
+        print('Cycle: ',clock_cycles)
+        for i in instruction_status:
+            print(i)
+        for FU in FU_status.values():
+            print(FU)
 
     def isRegFree(self,reg_num):
         return self.registers[reg_num]['free']
     
 
 processor=VLIWProcessor(64,32)
-processor.run_instructions('instr.txt')
+processor.run_instructions('./instr.txt')
