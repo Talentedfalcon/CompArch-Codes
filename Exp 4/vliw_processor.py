@@ -47,7 +47,7 @@ class VLIWProcessor():
 
         instruction_status=[]
         for _ in range(len(self.instructions)):
-            instruction_status.append({'Current FU':None,'Executed':0})
+            instruction_status.append({'Current FU':None,'Executed':0,'Next FU':'IF'})
 
         FU_status={
             'IF':{},
@@ -64,30 +64,107 @@ class VLIWProcessor():
         }
 
         for FU in FU_status:
-            FU_status[FU]={'Free':1,'InstrNum':-1,'ClkRemaining':0,'Completed':0}
+            FU_status[FU]={'Free':1,'InstrNum':-1,'ClkRemaining':0,'Completed':1}
+
+        cc_execution={
+            'IADD':6,
+            'IMUL':12,
+            'FADD':18,
+            'FMUL':30,
+            'LD':1,
+            'ST':1,
+            'LU':1,
+        }
 
         pc=-1
         clock_cycles=0
-        done=False
+        NOP=False
 
         instructions_completed=0
 
-        while instructions_completed<len(self.instructions):
-            print('Cycle: ',clock_cycles)
-            # if(FU_status['ID']['Completed']):
-            #     if(FU_status['IADD']['Free']):
+        print(self.instructions)
 
+        while instructions_completed<len(self.instructions):
+            #Write Back
+            if(FU_status['MEM']['Completed'] and not FU_status['MEM']['Free']):
+                if(FU_status['WB']['Free']):
+                    FU_status['MEM']['Free']=1
+                    FU_status['MEM']['Completed']=0
+
+                    FU_status['WB']['InstrNum']=FU_status['MEM']['InstrNum']
+                    FU_status['MEM']['InstrNum']=-1
+
+                    FU_status['WB']['Free']=0
+                    FU_status['WB']['ClkRemaining']=1
+                    FU_status['WB']['Completed']=0
+                    instruction_status[FU_status['WB']['InstrNum']]['Current FU']='WB'
+                    instruction_status[FU_status['WB']['InstrNum']]['Next FU']=None
+
+            #Memory
+            if(FU_status['MEM']['Free']):
+                for i in range(2,9):
+                    execution_unit=list(FU_status)[i]
+                    if(FU_status[execution_unit]['Completed'] and not FU_status[execution_unit]['Free']):
+                        FU_status[execution_unit]['Free']=1
+                        FU_status[execution_unit]['Completed']=0
+
+                        FU_status['MEM']['InstrNum']=FU_status[execution_unit]['InstrNum']
+                        FU_status[execution_unit]['InstrNum']=-1
+
+                        FU_status['MEM']['Free']=0
+                        FU_status['MEM']['ClkRemaining']=1
+                        FU_status['MEM']['Completed']=0
+                        instruction_status[FU_status['MEM']['InstrNum']]['Current FU']='MEM'
+                        instruction_status[FU_status['MEM']['InstrNum']]['Next FU']='WB'
+                        break
+
+            #Execution
+            if(FU_status['ID']['Completed'] and not FU_status['ID']['Free']):
+                execution_unit=self.instructions[FU_status['ID']['InstrNum']][0][0]
+                print(execution_unit)
+                if(execution_unit in ['AND','OR','XOR']):
+                    execution_unit='LU'
+                if(execution_unit=='NOP'):
+                    instruction_status[FU_status['ID']['InstrNum']]['Current FU']=None
+                    instruction_status[FU_status['ID']['InstrNum']]['Executed']=1
+                    instructions_completed+=1
+                    instruction_status[FU_status['ID']['InstrNum']]['Next FU']=None
+
+                    FU_status['ID']['Free']=1
+                    FU_status['ID']['InstrNum']=-1
+                    FU_status['ID']['ClkRemaining']=0
+                    FU_status['ID']['Completed']=1
+                elif(FU_status[execution_unit]['Free']):
+                    FU_status['ID']['Free']=1
+                    FU_status['ID']['Completed']=0
+
+                    FU_status[execution_unit]['InstrNum']=FU_status['ID']['InstrNum']
+                    FU_status['ID']['InstrNum']=-1
+
+                    FU_status[execution_unit]['Free']=0
+                    FU_status[execution_unit]['ClkRemaining']=cc_execution[execution_unit]
+                    FU_status[execution_unit]['Completed']=0
+                    instruction_status[FU_status[execution_unit]['InstrNum']]['Current FU']=execution_unit
+                    instruction_status[FU_status[execution_unit]['InstrNum']]['Next FU']='MEM'
 
 
             #Decode
-            if(FU_status['IF']['Completed']):
+            if(FU_status['IF']['Completed'] and not FU_status['IF']['Free']):
                 if(FU_status['ID']['Free']):
                     FU_status['IF']['Free']=1
+                    FU_status['IF']['Completed']=0
+
                     FU_status['ID']['InstrNum']=FU_status['IF']['InstrNum']
+                    FU_status['IF']['InstrNum']=-1
+
                     FU_status['ID']['Free']=0
                     FU_status['ID']['ClkRemaining']=1
                     FU_status['ID']['Completed']=0
                     instruction_status[FU_status['ID']['InstrNum']]['Current FU']='ID'
+                    if(self.instructions[FU_status['ID']['InstrNum']][0][0]=='NOP'):
+                        instruction_status[FU_status['ID']['InstrNum']]['Next FU']=None
+                    else:
+                        instruction_status[FU_status['ID']['InstrNum']]['Next FU']=self.instructions[FU_status['ID']['InstrNum']][0][0]
 
             #Instruction Fetch
             if(FU_status['IF']['Free']):
@@ -98,45 +175,40 @@ class VLIWProcessor():
                     FU_status['IF']['ClkRemaining']=1
                     FU_status['IF']['Completed']=0
                     instruction_status[FU_status['IF']['InstrNum']]['Current FU']='IF'
+                    instruction_status[FU_status['IF']['InstrNum']]['Next FU']='ID'
 
-            for i in instruction_status:
-                print(i)
-            print("\n")
-            for FU in FU_status.values():
-                print(FU)
+            self.printStatus(clock_cycles,instruction_status,FU_status)
 
+            #Checks and other processes
             for FU in FU_status.values():
                 FU['ClkRemaining']=max(0,FU['ClkRemaining']-1)
                 if(FU['ClkRemaining']==0):
                     FU['Completed']=1
 
             for instr in instruction_status:
-                if(instr['Current FU']=="ID"):
+                if(instr['Current FU']=="WB"):
                     if(FU_status[instr['Current FU']]['Completed']):
                         FU_status[instr['Current FU']]['Free']=1
                         instr['Executed']=1
                         instr['Current FU']=None
                         instructions_completed+=1
-                # else:
-                #     if(instr['Current FU']!=None and FU_status[instr['Current FU']]['Completed']):
-                #         next_FU=list(FU_status.keys())[list(FU_status.keys()).index(instr['Current FU'])+1]
-                #         if(FU_status[next_FU]['Free']):
-                #             FU_status[instr['Current FU']]['Free']=1
 
 
             print('\n\n\n')
             clock_cycles+=1
+            NOP=False
             sleep(0.4)
         
-        print('Cycle: ',clock_cycles)
-        for i in instruction_status:
-            print(i)
-        for FU in FU_status.values():
-            print(FU)
+        self.printStatus(clock_cycles,instruction_status,FU_status)
 
-    def isRegFree(self,reg_num):
-        return self.registers[reg_num]['free']
-    
+    def printStatus(self,clock_cycles,instruction_status,FU_status):
+        print('Cycle: ',clock_cycles)
+        for i,instr in enumerate(instruction_status):
+            print(f"{self.instructions[i][0][0]} {','.join(self.instructions[i][1])}:\t{instr}")
+        print("\n")
+        for FU in FU_status.keys():
+            if(not FU_status[FU]['Free']):
+                print(f"{FU}:\t{FU_status[FU]}")
 
 processor=VLIWProcessor(64,32)
 processor.run_instructions('./instr.txt')
