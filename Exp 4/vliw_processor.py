@@ -44,7 +44,6 @@ class VLIWProcessor():
     def run_instructions(self,filename):
         self.get_instructions(filename)
 
-
         instruction_status=[]
         for _ in range(len(self.instructions)):
             instruction_status.append({'Current FU':None,'Executed':0,'Next FU':'IF'})
@@ -78,7 +77,6 @@ class VLIWProcessor():
 
         pc=-1
         clock_cycles=0
-        NOP=False
 
         instructions_completed=0
 
@@ -121,7 +119,6 @@ class VLIWProcessor():
             #Execution
             if(FU_status['ID']['Completed'] and not FU_status['ID']['Free']):
                 execution_unit=self.instructions[FU_status['ID']['InstrNum']][0][0]
-                print(execution_unit)
                 if(execution_unit in ['AND','OR','XOR']):
                     execution_unit='LU'
                 if(execution_unit=='NOP'):
@@ -130,10 +127,12 @@ class VLIWProcessor():
                     instructions_completed+=1
                     instruction_status[FU_status['ID']['InstrNum']]['Next FU']=None
 
+
                     FU_status['ID']['Free']=1
                     FU_status['ID']['InstrNum']=-1
                     FU_status['ID']['ClkRemaining']=0
                     FU_status['ID']['Completed']=1
+
                 elif(FU_status[execution_unit]['Free']):
                     FU_status['ID']['Free']=1
                     FU_status['ID']['Completed']=0
@@ -177,7 +176,7 @@ class VLIWProcessor():
                     instruction_status[FU_status['IF']['InstrNum']]['Current FU']='IF'
                     instruction_status[FU_status['IF']['InstrNum']]['Next FU']='ID'
 
-            self.printStatus(clock_cycles,instruction_status,FU_status)
+            self.printStatus(clock_cycles,instruction_status,FU_status,mode='pretty')
 
             #Checks and other processes
             for FU in FU_status.values():
@@ -189,26 +188,75 @@ class VLIWProcessor():
                 if(instr['Current FU']=="WB"):
                     if(FU_status[instr['Current FU']]['Completed']):
                         FU_status[instr['Current FU']]['Free']=1
+                        FU_status[instr['Current FU']]['InstrNum']=-1
                         instr['Executed']=1
                         instr['Current FU']=None
                         instructions_completed+=1
 
-
-            print('\n\n\n')
             clock_cycles+=1
-            NOP=False
-            sleep(0.4)
+            sleep(0.5)
         
-        self.printStatus(clock_cycles,instruction_status,FU_status)
+        self.printStatus(clock_cycles,instruction_status,FU_status,mode='pretty')
 
-    def printStatus(self,clock_cycles,instruction_status,FU_status):
-        print('Cycle: ',clock_cycles)
-        for i,instr in enumerate(instruction_status):
-            print(f"{self.instructions[i][0][0]} {','.join(self.instructions[i][1])}:\t{instr}")
-        print("\n")
-        for FU in FU_status.keys():
-            if(not FU_status[FU]['Free']):
-                print(f"{FU}:\t{FU_status[FU]}")
+    def printStatus(self,clock_cycles,instruction_status,FU_status,mode='full'):
+        if(mode=='full'):
+            print('Cycle: ',clock_cycles)
+            for i,instr in enumerate(instruction_status):
+                print(f"{self.instructions[i][0][0]} {','.join(self.instructions[i][1])}:\t{instr}")
+            print("\n")
+
+            for FU in FU_status.keys():
+                if(not FU_status[FU]['Free']):
+                    print(f"{FU}:\t{FU_status[FU]}")
+            print("\n\n")
+        elif(mode=='pretty'):
+            print('Cycle: ',clock_cycles)
+            print("Instructions: ")
+            for i,instr in enumerate(instruction_status):
+                executed=" " if (not instr['Executed']) else "✔"
+                if(self.instructions[i][0][0]!='NOP'):
+                    print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}\t{','.join(self.instructions[i][1])}")
+                else:
+                    print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}")                
+            print("\n")
+
+            print("Processor: ")
+            for i,FU in enumerate(FU_status):
+                if(i<=2 or i>=9):
+                    if(not FU_status[FU]['Free']):
+                        printGreen(f"\t{FU}",end="")
+                    else:
+                        print(f"\t{FU}",end="")
+            print()
+            for i,FU in enumerate(FU_status):
+                if(i<=2 or i>=9):
+                    instr_string=f"\t{FU_status[FU]['InstrNum']} ({FU_status[FU]['ClkRemaining']})"
+                    if(FU_status[FU]['InstrNum']>=0):
+                        printRed(instr_string,end="")
+                    else:
+                        print(instr_string,end="")
+            print()
+            for i,FU in enumerate(FU_status):
+                if(i>2 and i<9):
+                    if(not FU_status[FU]['Free']):
+                        printGreen(f"\t\t\t{FU}")
+                    else:
+                        print(f"\t\t\t{FU}")
+                    instr_string=f"\t\t\t{FU_status[FU]['InstrNum']} ({FU_status[FU]['ClkRemaining']})"
+                    if(FU_status[FU]['InstrNum']>=0):
+                        printRed(instr_string)
+                    else:
+                        print(instr_string)
+
+            print("\n\n")
+            
+def printRed(text,end="\n"):
+    print("\033[91m{}\033[00m".format(text),end=end)
+
+def printGreen(text,end="\n"):
+    print("\033[92m {}\033[00m".format(text),end=end)
 
 processor=VLIWProcessor(64,32)
-processor.run_instructions('./instr.txt')
+# processor.run_instructions('./instr1.txt')
+# processor.run_instructions('./instr2.txt')
+processor.run_instructions('./instr3.txt')

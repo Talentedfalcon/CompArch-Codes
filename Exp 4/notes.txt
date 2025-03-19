@@ -9,8 +9,10 @@ Completed:
     - The units should have a way of determining if they are free or not (if not free and then continue executing all that can continue and when space is available switch out)
     - Have a clock that progresses one click at a time (basically define a step function so that one step is one clock) [#Done at the end of the while loop]
     - Ignore DATA HAZARDS for now and focus on STRUCTURAL HAZARDS [#DATA HAZARDS completely ignored because scheduling is static]
+    - Make a good terminal output (one which can be easily understood)
+    - Make some interesting examples
 
 Remaining Work:
-    Make a good terminal output (one which can be easily understood)
-    Make some interesting examples
-
+    Have the registers actually store values
+    Perform the calculations
+    Implement Forwarding
