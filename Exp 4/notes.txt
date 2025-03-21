@@ -13,6 +13,8 @@ Completed:
     - Make some interesting examples
 
 Remaining Work:
+    Implement Forwarding
+
+Bonus Stuff:
     Have the registers actually store values
     Perform the calculations
-    Implement Forwarding

@@ -32,6 +32,8 @@ class VLIWProcessor():
                 temp=[]
                 for j in i.split(' '):
                     temp.append(j.split(','))
+                if(len(i.split(' '))==1):
+                    temp.append([' '])
                 self.instructions.append(temp)
         except:
             raise Exception("File not found")
@@ -46,7 +48,12 @@ class VLIWProcessor():
 
         instruction_status=[]
         for _ in range(len(self.instructions)):
-            instruction_status.append({'Current FU':None,'Executed':0,'Next FU':'IF'})
+            instruction_status.append({
+                'Current FU':None,
+                'Next FU':'IF',
+                'Executed':0,
+                'Processing':0
+            })
 
         FU_status={
             'IF':{},
@@ -175,6 +182,7 @@ class VLIWProcessor():
                     FU_status['IF']['Completed']=0
                     instruction_status[FU_status['IF']['InstrNum']]['Current FU']='IF'
                     instruction_status[FU_status['IF']['InstrNum']]['Next FU']='ID'
+                    instruction_status[FU_status['IF']['InstrNum']]['Processing']=1
 
             self.printStatus(clock_cycles,instruction_status,FU_status,mode='pretty')
 
@@ -213,11 +221,9 @@ class VLIWProcessor():
             print('Cycle: ',clock_cycles)
             print("Instructions: ")
             for i,instr in enumerate(instruction_status):
-                executed=" " if (not instr['Executed']) else "✔"
-                if(self.instructions[i][0][0]!='NOP'):
+                if(instr['Processing']):
+                    executed=" " if (not instr['Executed']) else "✔"
                     print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}\t{','.join(self.instructions[i][1])}")
-                else:
-                    print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}")                
             print("\n")
 
             print("Processor: ")
