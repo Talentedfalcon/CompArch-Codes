@@ -25,6 +25,28 @@ class VLIWProcessor():
             })
         self.instructions=[]
     
+    def update_FU_status(self,Free,InstrNum,ClkRemaining,Completed):
+        status={
+            'Free':Free,
+            'InstrNum':InstrNum,
+            'ClkRemaining':ClkRemaining,
+            'Completed':Completed
+        }
+        return status
+    
+    def reset_FU_status(self):
+        status={'Free':1,'InstrNum':-1,'ClkRemaining':0,'Completed':1}
+        return status
+    
+    def update_instruction_status(self,CurrentFU,NextFU,Executed,Processing):
+        status={
+            'Current FU':CurrentFU,
+            'Next FU':NextFU,
+            'Executed':Executed,
+            'Processing':Processing
+        }
+        return status
+
     def get_instructions(self,filename):
         try:
             file=open(filename,'r')
@@ -70,7 +92,7 @@ class VLIWProcessor():
         }
 
         for FU in FU_status:
-            FU_status[FU]={'Free':1,'InstrNum':-1,'ClkRemaining':0,'Completed':1}
+            FU_status[FU]=self.reset_FU_status()
 
         cc_execution={
             'IADD':6,
@@ -93,34 +115,45 @@ class VLIWProcessor():
             #Write Back
             if(FU_status['MEM']['Completed'] and not FU_status['MEM']['Free']):
                 if(FU_status['WB']['Free']):
-                    FU_status['MEM']['Free']=1
-                    FU_status['MEM']['Completed']=0
+                    instr_num=FU_status['MEM']['InstrNum']
+                    FU_status['MEM']=self.reset_FU_status()
 
-                    FU_status['WB']['InstrNum']=FU_status['MEM']['InstrNum']
-                    FU_status['MEM']['InstrNum']=-1
+                    FU_status['WB']=self.update_FU_status(
+                        Free=0,
+                        InstrNum=instr_num,
+                        ClkRemaining=1,
+                        Completed=0
+                    )
 
-                    FU_status['WB']['Free']=0
-                    FU_status['WB']['ClkRemaining']=1
-                    FU_status['WB']['Completed']=0
-                    instruction_status[FU_status['WB']['InstrNum']]['Current FU']='WB'
-                    instruction_status[FU_status['WB']['InstrNum']]['Next FU']=None
-
+                    instruction_status[instr_num]=self.update_instruction_status(
+                        CurrentFU='WB',
+                        NextFU=None,
+                        Executed=instruction_status[instr_num]['Executed'],
+                        Processing=instruction_status[instr_num]['Processing']
+                    )
+                    
             #Memory
             if(FU_status['MEM']['Free']):
                 for i in range(2,9):
                     execution_unit=list(FU_status)[i]
                     if(FU_status[execution_unit]['Completed'] and not FU_status[execution_unit]['Free']):
-                        FU_status[execution_unit]['Free']=1
-                        FU_status[execution_unit]['Completed']=0
+                        instr_num=FU_status[execution_unit]['InstrNum']
+                        FU_status[execution_unit]=self.reset_FU_status()
 
-                        FU_status['MEM']['InstrNum']=FU_status[execution_unit]['InstrNum']
-                        FU_status[execution_unit]['InstrNum']=-1
+                        FU_status['MEM']=self.update_FU_status(
+                            Free=0,
+                            InstrNum=instr_num,
+                            ClkRemaining=1,
+                            Completed=0
+                        )
 
-                        FU_status['MEM']['Free']=0
-                        FU_status['MEM']['ClkRemaining']=1
-                        FU_status['MEM']['Completed']=0
-                        instruction_status[FU_status['MEM']['InstrNum']]['Current FU']='MEM'
-                        instruction_status[FU_status['MEM']['InstrNum']]['Next FU']='WB'
+                        instruction_status[instr_num]=self.update_instruction_status(
+                            CurrentFU='MEM',
+                            NextFU='WB',
+                            Executed=instruction_status[instr_num]['Executed'],
+                            Processing=instruction_status[instr_num]['Processing']
+                        )
+
                         break
 
             #Execution
@@ -129,60 +162,71 @@ class VLIWProcessor():
                 if(execution_unit in ['AND','OR','XOR']):
                     execution_unit='LU'
                 if(execution_unit=='NOP'):
-                    instruction_status[FU_status['ID']['InstrNum']]['Current FU']=None
-                    instruction_status[FU_status['ID']['InstrNum']]['Executed']=1
+                    instruction_status[FU_status['ID']['InstrNum']]=self.update_instruction_status(
+                        CurrentFU=None,
+                        NextFU=None,
+                        Executed=1,
+                        Processing=instruction_status[instr_num]['Processing']
+                    )
                     instructions_completed+=1
-                    instruction_status[FU_status['ID']['InstrNum']]['Next FU']=None
 
-
-                    FU_status['ID']['Free']=1
-                    FU_status['ID']['InstrNum']=-1
-                    FU_status['ID']['ClkRemaining']=0
-                    FU_status['ID']['Completed']=1
+                    FU_status['ID']=self.reset_FU_status()
 
                 elif(FU_status[execution_unit]['Free']):
-                    FU_status['ID']['Free']=1
-                    FU_status['ID']['Completed']=0
+                    instr_num=FU_status['ID']['InstrNum']
+                    FU_status['ID']=self.reset_FU_status()
 
-                    FU_status[execution_unit]['InstrNum']=FU_status['ID']['InstrNum']
-                    FU_status['ID']['InstrNum']=-1
+                    FU_status[execution_unit]=self.update_FU_status(
+                        Free=0,
+                        InstrNum=instr_num,
+                        ClkRemaining=cc_execution[execution_unit],
+                        Completed=0
+                    )
 
-                    FU_status[execution_unit]['Free']=0
-                    FU_status[execution_unit]['ClkRemaining']=cc_execution[execution_unit]
-                    FU_status[execution_unit]['Completed']=0
-                    instruction_status[FU_status[execution_unit]['InstrNum']]['Current FU']=execution_unit
-                    instruction_status[FU_status[execution_unit]['InstrNum']]['Next FU']='MEM'
-
+                    instruction_status[instr_num]=self.update_instruction_status(
+                        CurrentFU=execution_unit,
+                        NextFU='MEM',
+                        Executed=instruction_status[instr_num]['Executed'],
+                        Processing=instruction_status[instr_num]['Processing']
+                    )
 
             #Decode
             if(FU_status['IF']['Completed'] and not FU_status['IF']['Free']):
                 if(FU_status['ID']['Free']):
-                    FU_status['IF']['Free']=1
-                    FU_status['IF']['Completed']=0
+                    instr_num=FU_status['IF']['InstrNum']
+                    FU_status['IF']=self.reset_FU_status()
 
-                    FU_status['ID']['InstrNum']=FU_status['IF']['InstrNum']
-                    FU_status['IF']['InstrNum']=-1
+                    FU_status['ID']=self.update_FU_status(
+                        Free=0,
+                        InstrNum=instr_num,
+                        ClkRemaining=1,
+                        Completed=0
+                    )
 
-                    FU_status['ID']['Free']=0
-                    FU_status['ID']['ClkRemaining']=1
-                    FU_status['ID']['Completed']=0
-                    instruction_status[FU_status['ID']['InstrNum']]['Current FU']='ID'
-                    if(self.instructions[FU_status['ID']['InstrNum']][0][0]=='NOP'):
-                        instruction_status[FU_status['ID']['InstrNum']]['Next FU']=None
-                    else:
-                        instruction_status[FU_status['ID']['InstrNum']]['Next FU']=self.instructions[FU_status['ID']['InstrNum']][0][0]
+                    instruction_status[instr_num]=self.update_instruction_status(
+                        CurrentFU='ID',
+                        NextFU=None if(self.instructions[FU_status['ID']['InstrNum']][0][0]=='NOP') else self.instructions[FU_status['ID']['InstrNum']][0][0],
+                        Executed=instruction_status[instr_num]['Executed'],
+                        Processing=instruction_status[instr_num]['Processing']
+                    )
 
             #Instruction Fetch
             if(FU_status['IF']['Free']):
                 pc+=1
                 if(pc<len(self.instructions)):
-                    FU_status['IF']['InstrNum']=pc
-                    FU_status['IF']['Free']=0
-                    FU_status['IF']['ClkRemaining']=1
-                    FU_status['IF']['Completed']=0
-                    instruction_status[FU_status['IF']['InstrNum']]['Current FU']='IF'
-                    instruction_status[FU_status['IF']['InstrNum']]['Next FU']='ID'
-                    instruction_status[FU_status['IF']['InstrNum']]['Processing']=1
+                    FU_status['IF']=self.update_FU_status(
+                        Free=0,
+                        InstrNum=pc,
+                        ClkRemaining=1,
+                        Completed=0
+                    )
+
+                    instruction_status[pc]=self.update_instruction_status(
+                        CurrentFU='IF',
+                        NextFU='ID',
+                        Executed=instruction_status[pc]['Executed'],
+                        Processing=1
+                    )
 
             self.printStatus(clock_cycles,instruction_status,FU_status,mode='pretty')
 
@@ -195,8 +239,7 @@ class VLIWProcessor():
             for instr in instruction_status:
                 if(instr['Current FU']=="WB"):
                     if(FU_status[instr['Current FU']]['Completed']):
-                        FU_status[instr['Current FU']]['Free']=1
-                        FU_status[instr['Current FU']]['InstrNum']=-1
+                        FU_status[instr['Current FU']]=self.reset_FU_status()
                         instr['Executed']=1
                         instr['Current FU']=None
                         instructions_completed+=1
