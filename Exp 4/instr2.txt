@@ -1,4 +1,4 @@
 IMUL R1,R2,R3
 LD R1,Mem
 IADD R1,R2,R3
-ST R1,Mem
+ST Mem,R1

@@ -12,6 +12,13 @@ Functional Units:
     - No Operation (NOP) 1CC
 '''
 
+'''
+    Note:
+        - This processor will run without considering any kinds of Hazards 
+            i.e. whatever is given in the instr.txt that will be run
+        - Also forwarding is data not implemented
+'''
+
 class VLIWProcessor():
     def __init__(self,bits,num_registers):
         self.bits=bits
@@ -265,7 +272,7 @@ class VLIWProcessor():
             print("Instructions: ")
             for i,instr in enumerate(instruction_status):
                 if(instr['Processing']):
-                    executed=" " if (not instr['Executed']) else "✔"
+                    executed=" " if (not instr['Executed']) else "@"
                     print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}\t{','.join(self.instructions[i][1])}")
             print("\n")
 
@@ -308,4 +315,4 @@ def printGreen(text,end="\n"):
 processor=VLIWProcessor(64,32)
 # processor.run_instructions('./instr1.txt')
 # processor.run_instructions('./instr2.txt')
-processor.run_instructions('./instr3.txt')
+processor.run_instructions('./instr.txt')
