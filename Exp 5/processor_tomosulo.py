@@ -12,6 +12,12 @@ Functional Units:
     - No Operation (NOP) 1CC
 '''
 
+'''
+    Note:
+        - In this processor RAW, WAW and WAR hazards.
+        - Also some form of data forwarding is applied
+'''
+
 class ProcessorTomosulo():
     def __init__(self,bits,num_registers):
         self.bits=bits
@@ -242,19 +248,14 @@ class ProcessorTomosulo():
                     for i,reg in enumerate(self.registers):
                         if(not reg['Free']):
                             if(rs_status[execution_unit]['Fi']==i):
-                                print("Renaming Fi Register")
+                                # print("Renaming Fi Register")
                                 for j,free_reg in enumerate(self.registers):
-                                    if(
-                                        free_reg['Free'] 
-                                        and not free_reg['Reading']
-                                        and j!=0
-                                    ):
+                                    if(free_reg['Free'] and not free_reg['Reading']):
                                         rs_status[execution_unit]['Fi']=j
                                         register=self.instructions[instr_num][1][0]
                                         for k in range(instr_num,len(self.instructions)):
                                             for l in range(len(self.instructions[k][1])):
                                                 if(self.instructions[k][1][l]==register):
-                                                    print(self.instructions[k][0],self.instructions[k][1][l],register)
                                                     self.instructions[k][1][l]=f"R{j}"
                                         break
                             if(rs_status[execution_unit]['Fj']==i):
@@ -397,7 +398,7 @@ class ProcessorTomosulo():
             print("Instructions: ")
             for i,instr in enumerate(instruction_status):
                 if(instr['Processing']):
-                    executed="-" if (instr['Stall']) else ("✔" if (instr['Executed']) else " ")
+                    executed="-" if (instr['Stall']) else ("@" if (instr['Executed']) else " ")
                     print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}\t{','.join(self.instructions[i][1])}")
             print("")
 
@@ -444,5 +445,7 @@ def printGreen(text,end="\n"):
 
 def printYellow(text,end="\n"):
     print("\033[93m {}\033[00m" .format(text),end=end)
+
+
 processor=ProcessorTomosulo(64,32)
 processor.run_instructions('./instr.txt')
