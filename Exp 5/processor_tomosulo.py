@@ -173,13 +173,10 @@ class ProcessorTomosulo():
                             self.registers[rs_status[execution_unit]['Fi']]['Free']=1
                             self.registers[rs_status[execution_unit]['Fi']]['FU']=None
                             if(execution_unit!='LD'):
-                                self.registers[rs_status[execution_unit]['Fj']]['Free']=1
-                                # self.registers[rs_status[execution_unit]['Fj']]['Reading']=0
-                                self.registers[rs_status[execution_unit]['Fk']]['Free']=1
-                                # self.registers[rs_status[execution_unit]['Fk']]['Reading']=0
+                                self.registers[rs_status[execution_unit]['Fj']]['Reading']=0
+                                self.registers[rs_status[execution_unit]['Fk']]['Reading']=0
                         else:
-                            self.registers[rs_status[execution_unit]['Fj']]['Free']=1
-                            # self.registers[rs_status[execution_unit]['Fj']]['Reading']=0
+                            self.registers[rs_status[execution_unit]['Fj']]['Reading']=0
 
                         rs_status[execution_unit]['Busy']=False
                         rs_status[execution_unit]['Op']=None
@@ -253,26 +250,30 @@ class ProcessorTomosulo():
                                         and j!=0
                                     ):
                                         rs_status[execution_unit]['Fi']=j
-                                        self.instructions[instr_num][1][0]=f"R{j}"
+                                        register=self.instructions[instr_num][1][0]
+                                        for k in range(instr_num,len(self.instructions)):
+                                            for l in range(len(self.instructions[k][1])):
+                                                if(self.instructions[k][1][l]==register):
+                                                    print(self.instructions[k][0],self.instructions[k][1][l],register)
+                                                    self.instructions[k][1][l]=f"R{j}"
                                         break
                             if(rs_status[execution_unit]['Fj']==i):
                                 rs_status[execution_unit]['Qj']=reg['FU']
                                 rs_status[execution_unit]['Rj']=False
+                                instruction_status[instr_num]['Stall']=1
                             if(rs_status[execution_unit]['Fk']==i):
                                 rs_status[execution_unit]['Qk']=reg['FU']
                                 rs_status[execution_unit]['Rk']=False
+                                instruction_status[instr_num]['Stall']=1
 
                     if(execution_unit!='ST'):
                         self.registers[rs_status[execution_unit]['Fi']]['Free']=0
                         self.registers[rs_status[execution_unit]['Fi']]['FU']=execution_unit
                         if(execution_unit!='LD'):
-                            self.registers[rs_status[execution_unit]['Fj']]['Free']=0
-                            # self.registers[rs_status[execution_unit]['Fj']]['Reading']=1
-                            self.registers[rs_status[execution_unit]['Fk']]['Free']=0
-                            # self.registers[rs_status[execution_unit]['Fk']]['Reading']=1
+                            self.registers[rs_status[execution_unit]['Fj']]['Reading']=1
+                            self.registers[rs_status[execution_unit]['Fk']]['Reading']=1
                     else:
-                        self.registers[rs_status[execution_unit]['Fj']]['Free']=0
-                        # self.registers[rs_status[execution_unit]['Fj']]['Reading']=1
+                        self.registers[rs_status[execution_unit]['Fj']]['Reading']=1
 
                     FU_status[execution_unit]=self.update_FU_status(
                         Free=0,
@@ -335,7 +336,6 @@ class ProcessorTomosulo():
             for FU in FU_status:
                 if(FU in rs_status):
                     if(not rs_status[FU]['Rj'] or not rs_status[FU]['Rk']):
-                        instruction_status[FU_status[FU]['InstrNum']]['Stall']=1
                         continue
                 FU_status[FU]['ClkRemaining']=max(0,FU_status[FU]['ClkRemaining']-1)
                 if(FU_status[FU]['ClkRemaining']==0):
@@ -397,7 +397,7 @@ class ProcessorTomosulo():
             print("Instructions: ")
             for i,instr in enumerate(instruction_status):
                 if(instr['Processing']):
-                    executed=" " if (not instr['Executed']) else "✔"
+                    executed="-" if (instr['Stall']) else ("✔" if (instr['Executed']) else " ")
                     print(f"\t[{executed}] {i}: {self.instructions[i][0][0]}\t{','.join(self.instructions[i][1])}")
             print("")
 
@@ -414,7 +414,7 @@ class ProcessorTomosulo():
                     instr_string=f"\t{FU_status[FU]['InstrNum']} ({FU_status[FU]['ClkRemaining']})"
                     if(FU_status[FU]['InstrNum']>=0):
                         if(instruction_status[FU_status[FU]['InstrNum']]['Stall']):
-                            printGreen(instr_string,end="")
+                            printYellow(instr_string,end="")
                         else:
                             printRed(instr_string,end="")
                     else:
@@ -429,7 +429,7 @@ class ProcessorTomosulo():
                     instr_string=f"\t\t\t{FU_status[FU]['InstrNum']} ({FU_status[FU]['ClkRemaining']})"
                     if(FU_status[FU]['InstrNum']>=0):
                         if(instruction_status[FU_status[FU]['InstrNum']]['Stall']):
-                            printGreen(instr_string)
+                            printYellow(instr_string)
                         else:
                             printRed(instr_string)
                     else:
@@ -442,5 +442,7 @@ def printRed(text,end="\n"):
 def printGreen(text,end="\n"):
     print("\033[92m {}\033[00m".format(text),end=end)
 
+def printYellow(text,end="\n"):
+    print("\033[93m {}\033[00m" .format(text),end=end)
 processor=ProcessorTomosulo(64,32)
 processor.run_instructions('./instr.txt')
