@@ -1,0 +1,8 @@
+Completed:
+    - Implement Reservation Status
+    - Implement Register Status
+    - Print everything out in a neat way
+
+Remaining Work:
+    - Fix the bugs for WAR hazard detection
+        - Fix register renaming
