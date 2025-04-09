@@ -222,7 +222,7 @@ mem=Memory_System(16,32,64000,2000)
 mem.run_mem_access('mem.txt','access_seq3.txt')
 '''
     Total Access Sequence = 20
-    Access Sequence File = cache_replacement_test.txt
+    Access Sequence File = access_seq3.txt
 
     Cache Searches: 1021
     Cache Hits: 12

@@ -420,10 +420,10 @@ class Memory_System():
     def place_in_WriteBuffer(self,L1_block_num,block):
         wb_mem=self.write_buffer.mem
         wb_index=self.write_buffer.pointer
-        #Checking if block already in the victim cache
+        #Checking if block already in the Write Buffer
         for i in range(self.write_buffer.num_blocks):
             if(wb_mem[i]['tag']==block and wb_mem[i]['valid']==1):
-                print(f"\tBlock {block}({hex(block)}) already in Victim Cache...")
+                print(f"\tBlock {block}({hex(block)}) already in Write Buffer...")
                 print(f"\t\tUpdating block data...")
                 wb_mem[i]['words']=self.L1.mem[L1_block_num]['words']
                 return
