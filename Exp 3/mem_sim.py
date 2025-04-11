@@ -189,7 +189,7 @@ class Memory_System():
                 print(f"\tWrite = {isWrite}")
                 total_writes+=1
 
-
+            isL1ConflictMiss=False
             L1_block_num=block%self.L1.num_blocks
             L1_block_index=int(block/self.L1.num_blocks)
             L1_searches+=1
@@ -201,9 +201,14 @@ class Memory_System():
                     if(isWrite):
                         self.writetoL1(L1_block_num,addr)
                     continue
+                else:
+                    isL1ConflictMiss=True
             L1_misses+=1
 
-            print(f"\tL1 CACHE MISS: Checking Write Buffer...")
+            if(isL1ConflictMiss):
+                print(f"\tL1 CACHE MISS: Checking Write Buffer... (Confict Miss)")
+            else:
+                print(f"\tL1 CACHE MISS: Checking Write Buffer...")
             #If L1 Miss Look through Write Buffer
             isWriteBufferHit=False
             for i in range(self.write_buffer.num_blocks):
@@ -225,32 +230,37 @@ class Memory_System():
                         break
             if(isWriteBufferHit):
                 continue
+            
+            if(isL1ConflictMiss):
+                print(f"\tWrite Buffer MISS: Checking Victim CACHE...")
+            else:
+                print(f"\tWrite Buffer MISS: Checking Prefetch CACHE...")
 
-            print(f"\tWrite Buffer MISS: Checking Victim CACHE...")
             wb_misses+=1
 
             #If Write Buffer Look through Victim Cache
-            isVictimHit=False
-            for i in range(self.victim.num_blocks):
-                victim_searches+=1
-                if(self.victim.mem[i]['valid']==1):
-                    if(self.victim.mem[i]['tag']==block):
-                        print(f"\tVictim CACHE HIT: Data {self.victim.mem[i]['words'][addr%self.main.block_size]}")
-                        isVictimHit=True
-                        self.victim.mem[i]['valid']=0
-                        L1_swaps+=self.replaceL1Cache(L1_block_num)
-                        self.L1.mem[L1_block_num]['valid']=1
-                        self.L1.mem[L1_block_num]['block_index']=L1_block_index
-                        self.L1.mem[L1_block_num]['words']=self.main.mem[block]['words']
-                        if(isWrite):
-                            self.writetoL1(L1_block_num,addr)
-                        victim_hits+=1
-                        break
-            if(isVictimHit):
-                continue
+            if(isL1ConflictMiss):
+                isVictimHit=False
+                for i in range(self.victim.num_blocks):
+                    victim_searches+=1
+                    if(self.victim.mem[i]['valid']==1):
+                        if(self.victim.mem[i]['tag']==block):
+                            print(f"\tVictim CACHE HIT: Data {self.victim.mem[i]['words'][addr%self.main.block_size]}")
+                            isVictimHit=True
+                            self.victim.mem[i]['valid']=0
+                            L1_swaps+=self.replaceL1Cache(L1_block_num)
+                            self.L1.mem[L1_block_num]['valid']=1
+                            self.L1.mem[L1_block_num]['block_index']=L1_block_index
+                            self.L1.mem[L1_block_num]['words']=self.main.mem[block]['words']
+                            if(isWrite):
+                                self.writetoL1(L1_block_num,addr)
+                            victim_hits+=1
+                            break
+                if(isVictimHit):
+                    continue
 
-            print(f"\tVictim CACHE MISS: Checking Prefetch Cache...")
-            victim_misses+=1
+                print(f"\tVictim CACHE MISS: Checking Prefetch Cache...")
+                victim_misses+=1
 
             #If Victim Cache miss then looking through Prefetch Cache
             isPrefetchHit=False
@@ -597,7 +607,7 @@ mem=Memory_System(
 generate_main_memory(mem.main,'mem.txt')
 # generate_access_sequence(mem.main,80000,'access_seq.txt')
 
-mem.run_mem_access('mem.txt','cache_replacement_test.txt',write_chance=0.2,blocks_per_prefetch=2)
+mem.run_mem_access('mem.txt','access_seq1.txt',write_chance=0.2,blocks_per_prefetch=2)
 '''
 Total Access Sequences = 20
 Access Sequence File = cache_replacement_test.txt
